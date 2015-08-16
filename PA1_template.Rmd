@@ -1,0 +1,119 @@
+# Reproducuble results Peer Assesment project 1
+
+## Adding important packages
+```{r}
+library(knitr)
+opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+```
+## Processing the data
+Here we change the format of dates from a factor to POSFIX using lubridate package
+```{r}
+act <- read.csv("activity.csv", header = TRUE, sep = ',', colClasses = c("numeric", "character","integer"))
+act$date <- ymd(act$date)
+```
+
+## Calculating number of steps as per date
+```{r}
+
+steps <- act %>%
+filter(!is.na(steps)) %>%
+group_by(date) %>%
+summarize(steps = sum(steps)) %>%
+print
+```
+
+## A histogram showing number of steps on each date ignorging NA values
+```{r}
+ggplot(steps, aes(x = steps)) + geom_histogram(fill = "blue", binwidth = 1000) + labs(title = "Histogram of steps per day", x = "steps per day", y = "Frequency")
+```
+
+##Calculating mean steps and median steps
+
+we see here that these values are different because of missing values.
+```{r}
+mean_steps <- mean(steps$steps, na.rm = T)
+median_steps <- median(steps$steps, na.rm = T)
+mean_steps
+median_steps
+```
+
+## grouping steps according to a fix interval
+```{r}
+
+interval <- act %>%
+filter(!is.na(steps)) %>%
+group_by(interval) %>%
+summarize(steps = mean(steps))
+```
+## Plotting steps for interval
+```{r}
+ggplot(interval, aes(x = interval, y = steps))+geom_line(color="blue")
+interval[which.max(interval$steps),]
+```
+
+
+
+## Imputing strategy
+
+
+Strategy for filling in all of the missing values in the dataset:  I am using mean of that day to fill the missing value 
+
+```{r}
+
+sum(is.na(act$steps))
+```
+
+##Average daily activity pattern, mutating values for missing values
+```{r}
+
+act_full <- act
+nas <- is.na(act_full$steps)
+avg_interval <- tapply(act_full$steps, act_full$interval, mean, na.rm=T, simplify = T)
+act_full$steps[nas] <- avg_interval[as.character(act_full$interval[nas])]
+```
+
+```{r}
+
+sum(is.na(act_full$steps))
+
+
+steps_full <- act_full %>%
+filter(!is.na(steps)) %>%
+group_by(date) %>%
+summarize(steps = sum(steps)) %>%
+print
+
+ggplot(steps_full, aes(x=steps)) + geom_histogram(fill="blue", binwidth=1000)+labs(title = "Histogram of steps per day, including missing values", x = "steps per day", y = "Frequency")
+mean_steps_full <- mean(steps_full$steps, na.rm = T)
+median_steps_full <- median(steps_full$steps, na.rm = T)
+mean_steps_full
+median_steps_full
+
+```
+## adding a column for weektype
+```{r}
+act_full <- mutate(act_full, weektype = ifelse(weekdays(act_full$date) == "Saturday" | weekdays(act_full$date) == "Sunday", "weekend", "weekday"))
+act_full$weektype <- as.factor(act_full$weektype)
+head(act_full)
+
+interval_full <- act_full %>%
+group_by(interval, weektype) %>%
+summarize(steps = mean(steps))
+```
+
+## Separte plot for each weektype steps for interval 
+```{r}
+s <- ggplot(interval_full, aes(x=interval, y = steps, color = weektype)) + geom_line()+facet_wrap(~weektype, ncol = 1 , nrow = 2)
+print(s)
+
+```
+
+
+
+
+
+
+
